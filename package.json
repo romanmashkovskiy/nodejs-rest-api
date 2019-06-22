@@ -7,6 +7,6 @@
     "uuid": "^3.3.2"
   },
   "scripts": {
-    "start": "node app.js"
+    "start": "nodemon app.js"
   }
 }

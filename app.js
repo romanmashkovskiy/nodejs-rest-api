@@ -2,15 +2,16 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const uuidv = require('uuid/v1');
+const cors = require('./utils/cors');
 
 const app = express();
 const jsonParser = bodyParser.json();
 
 app.use(express.static(__dirname + '/public'));
+app.use(cors);
 
 // получение списка данных
 app.get('/api/users', (req, res) => {
-
     const content = fs.readFileSync('users.json', 'utf8');
     const users = JSON.parse(content);
     res.send(users);
@@ -18,7 +19,6 @@ app.get('/api/users', (req, res) => {
 
 // получение одного пользователя по id
 app.get('/api/users/:id', (req, res) => {
-
     const id = req.params.id; // получаем id
     const content = fs.readFileSync('users.json', 'utf8');
     const users = JSON.parse(content);
@@ -42,7 +42,6 @@ app.get('/api/users/:id', (req, res) => {
 
 // добавление нового пользователя
 app.post('/api/users', jsonParser, (req, res) => {
-
     if (!req.body.name || !req.body.age) return res.sendStatus(400);
 
     const userName = req.body.name;
@@ -75,7 +74,6 @@ app.post('/api/users', jsonParser, (req, res) => {
 
 // удаление пользователя по id
 app.delete('/api/users/:id', (req, res) => {
-
     const id = req.params.id;
     let data = fs.readFileSync('users.json', 'utf8');
     const users = JSON.parse(data);
@@ -104,7 +102,6 @@ app.delete('/api/users/:id', (req, res) => {
 
 // изменение пользователя
 app.put('/api/users', jsonParser, (req, res) => {
-
     if (!req.body) return res.sendStatus(400);
 
     const userId = req.body.id;
@@ -133,6 +130,6 @@ app.put('/api/users', jsonParser, (req, res) => {
     }
 });
 
-app.listen(3000, () => {
-    console.log('Сервер ожидает подключения...');
+app.listen(4000, () => {
+    console.log('Сервер ожидает подключения на 4000 порту');
 });
