@@ -1,8 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const fs = require('fs');
-const uuidv = require('uuid/v1');
 const cors = require('./utils/cors');
+const MongoClient = require("mongodb").MongoClient;
+const objectId = require("mongodb").ObjectID;
+
+const mongoClient = new MongoClient("mongodb://localhost:27017/", { useNewUrlParser: true });
+
+let dbClient;
 
 const app = express();
 const jsonParser = bodyParser.json();
@@ -10,34 +14,34 @@ const jsonParser = bodyParser.json();
 app.use(express.static(__dirname + '/public'));
 app.use(cors);
 
+mongoClient.connect((err, client) => {
+    if(err) return console.log(err);
+    dbClient = client;
+    app.locals.collection = client.db("usersdb").collection("users");
+    app.listen(4000, function(){
+        console.log("Сервер ожидает подключения...");
+    });
+});
+
 // получение списка данных
 app.get('/api/users', (req, res) => {
-    const content = fs.readFileSync('users.json', 'utf8');
-    const users = JSON.parse(content);
-    res.send(users);
+    const collection = req.app.locals.collection;
+    collection.find({}).toArray(function(err, users){
+
+        if(err) return console.log(err);
+        res.send(users)
+    });
 });
 
 // получение одного пользователя по id
 app.get('/api/users/:id', (req, res) => {
-    const id = req.params.id; // получаем id
-    const content = fs.readFileSync('users.json', 'utf8');
-    const users = JSON.parse(content);
-    let user = null;
+    const id = new objectId(req.params.id);
+    const collection = req.app.locals.collection;
+    collection.findOne({_id: id}, function(err, user){
 
-    // находим в массиве пользователя по id
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id === id) {
-            user = users[i];
-            break;
-        }
-    }
-
-    // отправляем пользователя
-    if (user) {
+        if(err) return console.log(err);
         res.send(user);
-    } else {
-        res.status(404).send();
-    }
+    });
 });
 
 // добавление нового пользователя
@@ -48,88 +52,40 @@ app.post('/api/users', jsonParser, (req, res) => {
     const userAge = req.body.age;
     const user = {name: userName, age: userAge};
 
-    let data = fs.readFileSync('users.json', 'utf8');
-    const users = JSON.parse(data);
+    const collection = req.app.locals.collection;
+    collection.insertOne(user, function(err, result){
 
-    // находим максимальный displayId
-    const displayId = Math.max.apply(Math, users.map((o) => {
-        return o.displayId;
-    }));
-
-    // увеличиваем его на единицу
-    user.displayId = displayId + 1;
-
-    //генерируем уникальный id
-    user.id = uuidv();
-
-    // добавляем пользователя в массив
-    users.push(user);
-
-    data = JSON.stringify(users);
-
-    // перезаписываем файл с новыми данными
-    fs.writeFileSync('users.json', data);
-    res.send(user);
+        if(err) return console.log(err);
+        res.send(user);
+    });
 });
 
 // удаление пользователя по id
 app.delete('/api/users/:id', (req, res) => {
-    const id = req.params.id;
-    let data = fs.readFileSync('users.json', 'utf8');
-    const users = JSON.parse(data);
-    let index = -1;
+    const id = new objectId(req.params.id);
+    const collection = req.app.locals.collection;
+    collection.findOneAndDelete({_id: id}, function(err, result){
 
-    // находим индекс пользователя в массиве
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id === id) {
-            index = i;
-            break;
-        }
-    }
-    if (index > -1) {
-        // удаляем пользователя из массива по индексу
-        const user = users.splice(index, 1)[0];
-        data = JSON.stringify(users);
-        fs.writeFileSync('users.json', data);
-
-        // отправляем удаленного пользователя
+        if(err) return console.log(err);
+        let user = result.value;
         res.send(user);
-    }
-    else {
-        res.status(404).send();
-    }
+    });
 });
 
 // изменение пользователя
 app.put('/api/users', jsonParser, (req, res) => {
-    if (!req.body) return res.sendStatus(400);
+    if (!req.body.name || !req.body.age) return res.sendStatus(400);
 
-    const userId = req.body.id;
+    const id = new objectId(req.body.id);
     const userName = req.body.name;
     const userAge = req.body.age;
 
-    const data = fs.readFileSync('users.json', 'utf8');
-    const users = JSON.parse(data);
-    let user;
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id === userId) {
-            user = users[i];
-            break;
-        }
-    }
+    const collection = req.app.locals.collection;
+    collection.findOneAndUpdate({_id: id}, { $set: {age: userAge, name: userName}},
+        {returnOriginal: false },function(err, result){
 
-    // изменяем данные у пользователя
-    if (user) {
-        user.age = userAge;
-        user.name = userName;
-        const data = JSON.stringify(users);
-        fs.writeFileSync('users.json', data);
-        res.send(user);
-    } else {
-        res.status(404).send(user);
-    }
-});
-
-app.listen(4000, () => {
-    console.log('Сервер ожидает подключения на 4000 порту');
+            if(err) return console.log(err);
+            const user = result.value;
+            res.send(user);
+        });
 });
