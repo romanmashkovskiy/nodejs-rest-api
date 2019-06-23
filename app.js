@@ -3,8 +3,6 @@ const bodyParser = require('body-parser');
 const cors = require('./utils/cors');
 const mongoose = require("mongoose");
 
-mongoose.set('useFindAndModify', false);
-
 const app = express();
 const Schema = mongoose.Schema;
 
@@ -17,7 +15,7 @@ app.use(express.static(__dirname + '/public'));
 app.use(cors);
 
 // подключение
-mongoose.connect("mongodb://localhost:27017/usersdb", {useNewUrlParser: true}, (err) => {
+mongoose.connect("mongodb://localhost:27017/usersdb", {useNewUrlParser: true, useFindAndModify: false}, (err) => {
     if (err) return console.log(err);
     app.listen(4000, function () {
         console.log("Сервер ожидает подключения на 4000 порту ...");
